@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2b1a0e">
+<meta name="description" content="เกมการศึกษา เรื่อง ปฏิกิริยาการเกิดพอลิเมอร์ (Polymerization Reaction Game)">
+<title>ปฏิกิริยาการเกิดพอลิเมอร์ | Polymerization Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-layer" aria-hidden="true"></div>
+<div class="bg-vignette" aria-hidden="true"></div>
+<img class="deco deco-tl" src="assets/images/ui/vine-top.png" alt="" aria-hidden="true">
+<img class="deco deco-bl" src="assets/images/ui/vine-bl.png" alt="" aria-hidden="true">
+
+<!-- ============================================================
+     1) LANDING MODAL
+     ============================================================ -->
+<div class="overlay is-open" id="landingScreen" role="dialog" aria-modal="true" aria-labelledby="landingTitle">
+  <div class="landing-card">
+    <img class="landing-plank" src="assets/images/ui/title-plank.png"
+         alt="ปฏิกิริยาการเกิดพอลิเมอร์" id="landingTitle">
+    <p class="landing-sub">Polymerization Reaction Game — เกมการศึกษาเคมีพอลิเมอร์</p>
+
+    <img class="landing-boy" src="assets/images/ui/customer.png" alt="ตัวละครลูกค้าในเกม">
+
+    <div class="landing-audio-note">
+      <span class="ico-sound" aria-hidden="true"></span>
+      <span>เกมนี้มีเสียงเพลงประกอบและเอฟเฟกต์เสียง — กรุณาปรับระดับเสียงก่อนเริ่มเล่น</span>
+    </div>
+
+    <div class="landing-actions">
+      <button class="btn btn-primary btn-xl" id="btnPlay" type="button">เข้าเล่นเกมเลย</button>
+      <button class="btn btn-secondary btn-xl" id="btnLearnFromLanding" type="button">เลือกโหมดเรียนรู้</button>
+      <button class="btn btn-wood" id="btnRestartFromMenu" type="button" hidden>เริ่มเกมใหม่ตั้งแต่ต้น</button>
+    </div>
+
+    <ul class="landing-tips">
+      <li>ปลูก “ผักพอลิเมอร์” ให้ลูกค้า โดยตอบคำถามให้ครบ 3 Phase</li>
+      <li>เลือก <b>บัวรดน้ำ (ตัวเร่งปฏิกิริยา)</b> ให้ตรงชนิดปฏิกิริยา แล้วจึงวางการ์ดคำตอบ</li>
+      <li>เล่นได้ทั้ง <b>ลากวาง (Drag &amp; Drop)</b> และ <b>แตะเพื่อเลือก (Tap)</b></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================
+     2) GAME SCREEN
+     ============================================================ -->
+<main class="game" id="gameScreen" hidden>
+
+  <!-- ---------- Top header ---------- -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="btn btn-wood btn-back" id="btnBackMenu" type="button" title="กลับหน้าเมนู">
+        <span class="ico-back" aria-hidden="true"></span>
+        <span class="lbl">เมนู</span>
+      </button>
+      <button class="btn btn-wood btn-guide" id="btnGuide" type="button">
+        <img class="ico-book" src="assets/images/ui/icon-book.png" alt="" aria-hidden="true">
+        <span class="lbl">คู่มือเคมี</span>
+      </button>
+    </div>
+
+    <h1 class="title-plank">
+      <img src="assets/images/ui/title-plank.png" alt="ปฏิกิริยาการเกิดพอลิเมอร์">
+    </h1>
+
+    <div class="topbar-right">
+      <div class="timer-plank" id="timerBox">
+        <span class="timer-value" id="timerValue">08:00</span>
+        <span class="sr-only">เวลาที่เหลือ</span>
+      </div>
+      <button class="btn btn-wood btn-icon" id="btnMute" type="button" aria-pressed="false" title="เปิด/ปิดเสียง">
+        <span class="ico-sound" id="muteIcon" aria-hidden="true"></span>
+        <span class="sr-only">เปิด/ปิดเสียงเพลง</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ---------- Grid ---------- -->
+  <div class="layout">
+
+    <!-- Growth status bar -->
+    <section class="panel panel-growth" aria-label="ขั้นตอนการเจริญเติบโต">
+      <h2 class="panel-title">ขั้นตอนการเจริญเติบโต (3 Phase)</h2>
+      <ol class="growth-track" id="growthTrack">
+        <li class="growth-step is-active" data-phase="1">
+          <img class="growth-icon" src="assets/images/ui/growth-1.png" alt="">
+          <span class="growth-name">Phase 1</span>
+          <span class="growth-desc">ปลูกเมล็ด</span>
+          <img class="growth-lock" src="assets/images/ui/lock.png" alt="ยังไม่ปลดล็อก">
+        </li>
+        <li class="growth-arrow" aria-hidden="true"><img src="assets/images/ui/arrow-gold.png" alt=""></li>
+        <li class="growth-step" data-phase="2">
+          <img class="growth-icon" src="assets/images/ui/growth-2.png" alt="">
+          <span class="growth-name">Phase 2</span>
+          <span class="growth-desc">กำลังเจริญเติบโต</span>
+          <img class="growth-lock" src="assets/images/ui/lock.png" alt="ยังไม่ปลดล็อก">
+        </li>
+        <li class="growth-arrow" aria-hidden="true"><img src="assets/images/ui/arrow-gold.png" alt=""></li>
+        <li class="growth-step" data-phase="3">
+          <img class="growth-icon" src="assets/images/ui/growth-3.png" alt="">
+          <span class="growth-name">Phase 3</span>
+          <span class="growth-desc">โตเต็มที่</span>
+          <img class="growth-lock" src="assets/images/ui/lock.png" alt="ยังไม่ปลดล็อก">
+        </li>
+      </ol>
+    </section>
+
+    <!-- Customer requirement -->
+    <section class="panel panel-customer" aria-label="ความต้องการของลูกค้า">
+      <h2 class="panel-title">ความต้องการของลูกค้า</h2>
+      <div class="customer-body">
+        <div class="speech-bubble" id="speechBubble">
+          <p class="speech-line">วันนี้ผมอยากได้ผัก</p>
+          <p class="speech-strong" id="customerWant">“พอลิเมอร์สายโซ่ยาว”</p>
+          <p class="speech-line">ระดับ <b>ยาวมาก (3 Phase)</b></p>
+          <div class="chain-preview" id="chainPreview">
+            <img src="assets/images/ui/chain-bubble.png" alt="" aria-hidden="true">
+            <span class="chain-n">(n)</span>
+          </div>
+        </div>
+        <figure class="customer-avatar" id="customerAvatar">
+          <img class="avatar-img" id="avatarImg" src="assets/images/ui/customer.png" alt="ลูกค้า">
+          <figcaption class="avatar-name" id="avatarName">น้องต้นกล้า</figcaption>
+        </figure>
+      </div>
+      <div class="reward-strip">
+        <img class="ico-sprig" src="assets/images/ui/icon-sprig.png" alt="" aria-hidden="true">
+        <span class="reward-label">รางวัล</span>
+        <span class="reward-chip">
+          <img src="assets/images/ui/icon-star.png" alt="ดาว"> × <b id="statStars">0</b>
+        </span>
+        <span class="reward-chip">
+          <img src="assets/images/ui/icon-leaf.png" alt="เหรียญใบไม้"> × <b id="statCoins">0</b>
+        </span>
+        <span class="reward-chip order-chip">ออเดอร์ <b id="statOrders">0</b></span>
+      </div>
+    </section>
+
+    <!-- Plant container -->
+    <section class="panel panel-plant" aria-label="ต้นผักของคุณ">
+      <h2 class="panel-title">ต้นผักของคุณ</h2>
+      <div class="plant-frame" id="plantFrame">
+        <img class="plant-img" id="plantImg" src="assets/images/phase0.png" alt="ต้นผักในระยะปัจจุบัน">
+        <div class="plant-fallback" id="plantFallback" hidden></div>
+        <div class="sparkle-layer" id="sparkleLayer" aria-hidden="true"></div>
+      </div>
+      <div class="plant-caption">
+        <p>Phase ปัจจุบัน : <b id="phaseNow">0</b> / 3</p>
+        <p class="plant-stage" id="phaseName">ยังไม่ได้ปลูก</p>
+      </div>
+    </section>
+
+    <!-- Catalyst selector -->
+    <section class="panel panel-catalyst" aria-label="เลือกบัวรดน้ำ ตัวเร่งปฏิกิริยา">
+      <h2 class="panel-title">เลือกบัวรดน้ำ (ตัวเร่งปฏิกิริยา)</h2>
+      <div class="catalyst-grid" id="catalystGrid" role="radiogroup" aria-label="ชนิดปฏิกิริยา">
+        <button class="catalyst" type="button" role="radio" aria-checked="false" data-catalyst="condensation">
+          <img src="assets/images/ui/can-cond-card.png" alt="">
+          <span class="sr-only">ปฏิกิริยาควบแน่น (Condensation)</span>
+          <span class="catalyst-check" aria-hidden="true">เลือกแล้ว</span>
+        </button>
+        <button class="catalyst" type="button" role="radio" aria-checked="false" data-catalyst="addition">
+          <img src="assets/images/ui/can-add-card.png" alt="">
+          <span class="sr-only">ปฏิกิริยาการเติม (Addition)</span>
+          <span class="catalyst-check" aria-hidden="true">เลือกแล้ว</span>
+        </button>
+      </div>
+      <p class="catalyst-hint" id="catalystHint">เลือกชนิดปฏิกิริยาให้ตรงกับโจทย์ก่อนยืนยัน</p>
+    </section>
+
+    <!-- Knowledge note -->
+    <aside class="panel-note" aria-label="ความรู้พอลิเมอร์">
+      <img class="note-img" src="assets/images/ui/notebook.png"
+           alt="ความรู้พอลิเมอร์: ปฏิกิริยาควบแน่นจะเกิดการคายโมเลกุลเล็ก เช่น น้ำ ออกมา, ปฏิกิริยาเติมไม่เกิดการคายโมเลกุลเล็ก">
+      <div class="note-text">
+        <h2>ความรู้พอลิเมอร์</h2>
+        <ul>
+          <li>ปฏิกิริยา<b>ควบแน่น</b> เกิดการคายโมเลกุลเล็ก เช่น น้ำ (H<sub>2</sub>O) ออกมา</li>
+          <li>ปฏิกิริยา<b>เติม</b> ไม่เกิดการคายโมเลกุลเล็ก</li>
+        </ul>
+      </div>
+      <button class="btn btn-link" id="btnNoteMore" type="button">อ่านคู่มือฉบับเต็ม →</button>
+    </aside>
+
+    <!-- Answer slots + controls -->
+    <section class="panel panel-answers" aria-label="ช่องวางคำตอบ">
+      <h2 class="panel-title">เลือกคำตอบที่ถูกต้อง แล้วใส่ลงในช่องคำตอบ</h2>
+
+      <div class="question-card" id="questionCard">
+        <div class="question-head">
+          <span class="q-badge" id="qBadge">โจทย์</span>
+          <span class="q-type" id="qType">กำลังโหลดโจทย์…</span>
+        </div>
+        <div class="question-figure" id="questionFigure"></div>
+        <p class="question-text" id="questionText">…</p>
+        <p class="question-ask" id="questionAsk">…</p>
+      </div>
+
+      <div class="slot-row" id="slotRow">
+        <div class="slot-wrap">
+          <div class="slot" id="slot1" data-slot="1" tabindex="0" role="button" aria-label="ช่องคำตอบ Phase 1">
+            <span class="slot-placeholder">วางคำตอบ</span>
+          </div>
+          <p class="slot-label">Phase 1<br><span>ปลูกเมล็ด</span></p>
+        </div>
+        <span class="slot-arrow" aria-hidden="true"><img src="assets/images/ui/arrow-gold.png" alt=""></span>
+        <div class="slot-wrap">
+          <div class="slot" id="slot2" data-slot="2" tabindex="0" role="button" aria-label="ช่องคำตอบ Phase 2">
+            <span class="slot-placeholder">วางคำตอบ</span>
+          </div>
+          <p class="slot-label">Phase 2<br><span>กำลังเจริญเติบโต</span></p>
+        </div>
+        <span class="slot-arrow" aria-hidden="true"><img src="assets/images/ui/arrow-gold.png" alt=""></span>
+        <div class="slot-wrap">
+          <div class="slot" id="slot3" data-slot="3" tabindex="0" role="button" aria-label="ช่องคำตอบ Phase 3">
+            <span class="slot-placeholder">วางคำตอบ</span>
+          </div>
+          <p class="slot-label">Phase 3<br><span>โตเต็มที่</span></p>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <button class="btn btn-submit" id="btnSubmit" type="button" disabled>ยืนยันคำตอบ</button>
+        <button class="btn btn-clear" id="btnClear" type="button">ล้างทั้งหมด</button>
+      </div>
+    </section>
+
+    <!-- Shuffle option pool -->
+    <section class="panel panel-pool" aria-label="ตัวเลือกคำตอบ">
+      <h2 class="panel-title panel-title-banner">
+        <img src="assets/images/ui/banner-pool.png" alt="ตัวเลือกคำตอบ">
+      </h2>
+      <div class="pool-grid" id="poolGrid"></div>
+      <p class="pool-hint">แตะการ์ดเพื่อส่งเข้าช่องคำตอบ หรือลากการ์ดไปวางในช่องคำตอบด้านซ้าย</p>
+    </section>
+
+  </div>
+
+  <!-- ---------- Bottom progress ---------- -->
+  <footer class="progressbar">
+    <img class="ico-sprig" src="assets/images/ui/icon-sprig.png" alt="" aria-hidden="true">
+    <span class="progress-label">ความก้าวหน้าการเกิดพอลิเมอร์</span>
+    <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <span class="progress-pct" id="progressPct">0%</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</main>
+
+<!-- ============================================================
+     3) LEARNING MODE MODAL
+     ============================================================ -->
+<div class="overlay" id="guideModal" role="dialog" aria-modal="true" aria-labelledby="guideTitle" hidden>
+  <div class="guide-card">
+    <header class="guide-head">
+      <h2 id="guideTitle">
+        <img class="ico-book" src="assets/images/ui/icon-book.png" alt="" aria-hidden="true">
+        คู่มือเคมี : ปฏิกิริยาการเกิดพอลิเมอร์
+      </h2>
+      <button class="btn btn-close" id="btnGuideClose" type="button" aria-label="ปิดคู่มือ">✕</button>
+    </header>
+
+    <div class="guide-tabs" role="tablist">
+      <button class="gtab is-active" data-tab="concept" role="tab" aria-selected="true" type="button">สรุปแนวคิด</button>
+      <button class="gtab" data-tab="add" role="tab" aria-selected="false" type="button">การเติม</button>
+      <button class="gtab" data-tab="cond" role="tab" aria-selected="false" type="button">การควบแน่น</button>
+      <button class="gtab" data-tab="table" role="tab" aria-selected="false" type="button">ตารางสมการ</button>
+    </div>
+
+    <div class="guide-body">
+      <section class="gpane is-active" data-pane="concept">
+        <p class="lead">พอลิเมอไรเซชัน (Polymerization) คือปฏิกิริยาที่มอนอเมอร์ (monomer) จำนวนมากเชื่อมต่อกันเป็นสายโซ่ยาว เรียกว่า <b>พอลิเมอร์ (polymer)</b> แบ่งออกเป็น 2 แบบหลัก</p>
+        <div class="compare">
+          <div class="compare-col compare-add">
+            <img class="compare-can" src="assets/images/ui/can-add-card.png" alt="บัวรดน้ำปฏิกิริยาการเติม">
+            <div>
+              <h3>ปฏิกิริยาการเติม (Addition)</h3>
+              <ul>
+                <li>มอนอเมอร์ต้องมี<b>พันธะคู่ C=C</b> หรือเป็น<b>วงแหวน</b>ที่เปิดวงได้</li>
+                <li><b>ไม่มี</b>โมเลกุลเล็กหลุดออกมา</li>
+                <li>สูตรโมเลกุลของหน่วยซ้ำ = สูตรของมอนอเมอร์</li>
+                <li>กลไกย่อย: Free-Radical, Cationic, Anionic, Coordination (Ziegler–Natta), Ring-Opening (ROP)</li>
+                <li>ตัวอย่าง: PE, PVC, PMMA, ยางพอลิบิวทาไดอีน, อีพ็อกซี</li>
+              </ul>
+            </div>
+          </div>
+          <div class="compare-col compare-cond">
+            <img class="compare-can" src="assets/images/ui/can-cond-card.png" alt="บัวรดน้ำปฏิกิริยาควบแน่น">
+            <div>
+              <h3>ปฏิกิริยาการควบแน่น (Condensation)</h3>
+              <ul>
+                <li>มอนอเมอร์มี<b>หมู่ฟังก์ชัน 2 หมู่ขึ้นไป</b> เช่น –OH, –COOH, –NH<sub>2</sub></li>
+                <li><b>มี</b>โมเลกุลเล็กหลุดออก เช่น H<sub>2</sub>O, HCl</li>
+                <li>เป็นการโตแบบขั้น (Step-Growth) สายโซ่ค่อย ๆ ต่อกัน</li>
+                <li>ตัวอย่าง: พอลิเอสเทอร์ (PET), พอลิเอไมด์ (ไนลอน), พอลิยูรีเทน, ซิลิโคน</li>
+                <li>ข้อยกเว้นที่ต้องจำ: พอลิยูรีเทน/พอลิยูเรีย จัดเป็น step-growth แม้ไม่คายน้ำ</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="guide-tip"><b>เคล็ดลับจำง่าย :</b> เห็นพันธะคู่ <code>C=C</code> หรือ วงแหวน → <b>เติม</b> &nbsp;•&nbsp; เห็นหมู่ –OH / –COOH / –NH<sub>2</sub> / –COCl มาจับคู่กัน → <b>ควบแน่น</b></p>
+      </section>
+
+      <section class="gpane" data-pane="add">
+        <h3 class="gpane-title">ปฏิกิริยาการเติม (Addition Polymerization)</h3>
+        <div class="mech-list" id="mechAdd"></div>
+      </section>
+
+      <section class="gpane" data-pane="cond">
+        <h3 class="gpane-title">ปฏิกิริยาการควบแน่น (Condensation Polymerization)</h3>
+        <div class="mech-list" id="mechCond"></div>
+      </section>
+
+      <section class="gpane" data-pane="table">
+        <h3 class="gpane-title">ตารางสรุปสมการฉบับเต็ม</h3>
+        <div class="table-scroll">
+          <table class="guide-table">
+            <thead>
+              <tr><th>ชื่อปฏิกิริยา / พอลิเมอร์</th><th>สมการฉบับเต็ม</th><th>ชนิด</th></tr>
+            </thead>
+            <tbody id="guideTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <footer class="guide-foot">
+      <button class="btn btn-primary" id="btnGuidePlay" type="button">เริ่มเล่นเกม</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================================================
+     4) JUMPSCARE OVERLAY
+     ============================================================ -->
+<div class="jumpscare" id="jumpscare" role="alertdialog" aria-modal="true" aria-labelledby="jsTitle" hidden>
+  <div class="js-inner">
+    <img class="js-img" id="jsImg" src="assets/images/jumpscare-face.png" alt="">
+    <div class="js-fallback" id="jsFallback" hidden><div class="js-face">!</div></div>
+    <h2 class="js-title" id="jsTitle">ตอบผิดติดกัน 3 ครั้ง!</h2>
+    <p class="js-sub">ใจเย็น ๆ อ่านโจทย์ให้ดีก่อนนะ… ต้นผักกำลังงอแง</p>
+    <button class="btn btn-primary btn-xl" id="btnJsRetry" type="button">พยายามใหม่อีกครั้ง</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     5) REWARD MODAL
+     ============================================================ -->
+<div class="overlay" id="rewardModal" role="dialog" aria-modal="true" aria-labelledby="rewardTitle" hidden>
+  <div class="reward-card">
+    <img class="reward-boy" src="assets/images/ui/customer.png" alt="">
+    <h2 id="rewardTitle">ส่งมอบผักสำเร็จ!</h2>
+    <p class="reward-cust" id="rewardCust">ลูกค้าพอใจมาก</p>
+    <img class="reward-plant" id="rewardPlant" src="assets/images/phase3.png" alt="">
+    <div class="reward-gains">
+      <div class="gain">
+        <img src="assets/images/ui/icon-star.png" alt="">
+        <b id="gainStars">+50</b><span class="gain-lbl">ดาว</span>
+      </div>
+      <div class="gain">
+        <img src="assets/images/ui/icon-leaf.png" alt="">
+        <b id="gainCoins">+5</b><span class="gain-lbl">เหรียญใบไม้</span>
+      </div>
+    </div>
+    <p class="reward-total">รวมสะสม : <b id="rewardTotalStars">0</b> ดาว &nbsp;|&nbsp; <b id="rewardTotalCoins">0</b> เหรียญ</p>
+    <button class="btn btn-primary btn-xl" id="btnNextCustomer" type="button">รับลูกค้ารายต่อไป →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     6) GAME OVER / TIME UP
+     ============================================================ -->
+<div class="overlay" id="overModal" role="dialog" aria-modal="true" aria-labelledby="overTitle" hidden>
+  <div class="reward-card">
+    <h2 id="overTitle">หมดเวลา!</h2>
+    <p class="reward-cust">สรุปผลการเพาะปลูกพอลิเมอร์ของคุณ</p>
+    <div class="summary-grid">
+      <div class="sum"><b id="sumOrders">0</b><span>ออเดอร์สำเร็จ</span></div>
+      <div class="sum"><b id="sumStars">0</b><span>ดาวสะสม</span></div>
+      <div class="sum"><b id="sumCoins">0</b><span>เหรียญใบไม้</span></div>
+      <div class="sum"><b id="sumAcc">0%</b><span>ความแม่นยำ</span></div>
+    </div>
+    <p class="reward-total" id="overRank">—</p>
+    <div class="control-row over-actions">
+      <button class="btn btn-primary btn-xl" id="btnRestart" type="button">เล่นใหม่อีกครั้ง</button>
+      <button class="btn btn-secondary" id="btnOverGuide" type="button">ทบทวนคู่มือ</button>
+    </div>
+  </div>
+</div>
+
+<audio id="bgmAudio" src="assets/audio/bgm.mp3" loop preload="auto"></audio>
+<audio id="wowAudio" src="assets/audio/wow.mp3" preload="auto"></audio>
+
+<script src="app.js"></script>
+</body>
+</html>
