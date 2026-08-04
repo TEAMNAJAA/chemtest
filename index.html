@@ -435,6 +435,8 @@
       <button class="btn btn-close" id="btnBoardClose" type="button" aria-label="ปิด">✕</button>
     </header>
 
+    <p class="board-status" id="boardStatus"></p>
+
     <div class="board-rule">
       <b>เกณฑ์การจัดอันดับ</b> — เก็บ “รอบที่ดีที่สุด” ของแต่ละเลขที่ แล้วเรียงตามลำดับนี้
       <ol>
@@ -460,7 +462,8 @@
     </div>
 
     <footer class="guide-foot board-foot">
-      <button class="btn btn-wood" id="btnBoardReset" type="button">ล้างคะแนนทั้งหมด</button>
+      <button class="btn btn-wood" id="btnBoardReset" type="button" hidden>ล้างคะแนนทั้งหมด (Host)</button>
+      <button class="btn btn-wood" id="btnBoardRefresh" type="button">รีเฟรช</button>
       <button class="btn btn-primary" id="btnBoardDone" type="button">ปิด</button>
     </footer>
   </div>

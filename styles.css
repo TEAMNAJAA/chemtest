@@ -875,6 +875,16 @@ img{max-width:100%;}
    Leaderboard
    ============================================================ */
 .board-card{width:min(880px,100%);}
+.board-status{
+  margin:0; padding:8px 18px; font-size:clamp(11px,1.1vw,13px); font-weight:600;
+  border-bottom:2px solid var(--wood-edge);
+}
+.board-status::before{content:"● ";}
+.board-status.is-online{background:rgba(79,154,53,.25); color:#c9e6ac;}
+.board-status.is-load{background:rgba(224,163,63,.2); color:var(--gold-400);}
+.board-status.is-off{background:rgba(192,57,43,.22); color:#ffb37a;}
+.board-foot{flex-wrap:wrap;}
+
 .board-rule{
   padding:12px 18px;
   background:rgba(0,0,0,.34);

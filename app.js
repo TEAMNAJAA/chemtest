@@ -460,8 +460,56 @@
      เก็บใน localStorage ของเครื่องที่เล่น (เว็บเป็น static ไม่มีเซิร์ฟเวอร์)
      ========================================================= */
   var SEAT_COUNT = 30;
+  var HOST_SEAT = 13;               // เลขที่ของ host — คนเดียวที่เห็นปุ่มล้างคะแนน
   var LS_SCORES = 'polymer.scores.v1';
   var LS_SEAT = 'polymer.seat';
+
+  /* ---------------------------------------------------------
+     ตั้งค่าเซิร์ฟเวอร์คะแนนออนไลน์ (Firebase Realtime Database)
+     ---------------------------------------------------------
+     วาง URL ฐานข้อมูลลงใน CLOUD.url แล้วคะแนนจะรวมกันทั้งห้องทันที
+     ตัวอย่าง:
+       url: 'https://polymer-game-1234-default-rtdb.asia-southeast1.firebasedatabase.app'
+     ถ้าเว้นว่างไว้ เกมจะเก็บคะแนนลงเครื่องตัวเองเหมือนเดิม (ไม่พัง)
+     วิธีสร้าง URL ดูขั้นตอนใน README หัวข้อ "ตั้งค่า Leaderboard ออนไลน์"
+     --------------------------------------------------------- */
+  var CLOUD = {
+    url: 'https://testtmlvchtest-default-rtdb.asia-southeast1.firebasedatabase.app/',                        // <<<<<< วาง URL ตรงนี้
+    room: 'class1'                  // เปลี่ยนชื่อห้องได้ ถ้าอยากแยกหลายห้อง
+  };
+
+  function cloudOn() { return !!CLOUD.url; }
+  function cloudBase() {
+    return CLOUD.url.replace(/\/+$/, '') + '/' + CLOUD.room + '/scores';
+  }
+
+  function cloudGetAll() {
+    return fetch(cloudBase() + '.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (j) { return j || {}; });
+  }
+
+  function cloudPut(seat, run) {
+    return fetch(cloudBase() + '/' + seat + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(run)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return true;
+    });
+  }
+
+  function cloudClear() {
+    return fetch(cloudBase() + '.json', { method: 'DELETE' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return true;
+      });
+  }
 
   function loadScores() {
     try {
@@ -499,6 +547,28 @@
     saveScores(all);
     return { saved: true, isBest: rec.best === run };
   }
+
+  /** ส่งคะแนนขึ้นเซิร์ฟเวอร์ (ถ้าตั้งค่าไว้) — เก็บ "รอบที่ดีที่สุด" ของเลขที่นั้น */
+  function pushToCloud(run, onDone) {
+    if (!cloudOn() || !S.seat || !run.attempts) { onDone({ mode: 'local' }); return; }
+    cloudGetAll()
+      .then(function (remote) {
+        var cur = remote[S.seat] || {};
+        var best = isBetterRun(run, cur.best) ? run : cur.best;
+        var plays = (cur.plays || 0) + 1;
+        return cloudPut(S.seat, { plays: plays, best: best })
+          .then(function () {
+            scoreCache = null;                       // ให้ดึงใหม่รอบหน้า
+            onDone({ mode: 'cloud', isBest: best === run });
+          });
+      })
+      .catch(function (e) { onDone({ mode: 'offline', err: e.message }); });
+  }
+
+  var scoreCache = null;        // คะแนนล่าสุดที่ดึงจากเซิร์ฟเวอร์
+
+  /** รวมคะแนน: ใช้ของเซิร์ฟเวอร์ถ้ามี ไม่งั้นใช้ของเครื่อง */
+  function currentScores() { return scoreCache || loadScores(); }
 
   /* =========================================================
      4) GAME STATE
@@ -1091,10 +1161,22 @@
     };
     var res = recordRun(run);
     $('sumScore').textContent = score;
-    $('sumScoreNote').textContent =
+    var note = $('sumScoreNote');
+    note.textContent =
       res.saved ? (res.isBest ? '(สถิติใหม่ของเลขที่ ' + S.seat + '!)' : '(ยังไม่ชนะสถิติเดิม)')
                 : res.reason === 'no-answer' ? '(ยังไม่ได้ตอบข้อไหนเลย — ไม่บันทึก)'
                 : '(ยังไม่ได้เลือกเลขที่)';
+
+    // ส่งขึ้นเซิร์ฟเวอร์ให้เพื่อนเห็นด้วย
+    if (res.saved && cloudOn()) {
+      note.textContent += ' • กำลังส่งขึ้นเซิร์ฟเวอร์…';
+      pushToCloud(run, function (c) {
+        note.textContent = res.isBest ? '(สถิติใหม่ของเลขที่ ' + S.seat + '!)' : '(ยังไม่ชนะสถิติเดิม)';
+        note.textContent += c.mode === 'cloud'
+          ? ' • ส่งขึ้นอันดับรวมของห้องแล้ว'
+          : ' • ส่งไม่สำเร็จ (เน็ตมีปัญหา) คะแนนถูกเก็บไว้ในเครื่องแล้ว';
+      });
+    }
 
     renderReview('all');
     openModal('overModal');
@@ -1186,8 +1268,38 @@
   /* =========================================================
      10.6) Leaderboard
      ========================================================= */
+  function setBoardStatus(state, detail) {
+    var el = $('boardStatus');
+    var map = {
+      loading:  ['is-load',   'กำลังโหลดคะแนนจากเซิร์ฟเวอร์…'],
+      online:   ['is-online', 'ออนไลน์ — คะแนนรวมของทั้งห้อง (ทุกเครื่องเห็นตรงกัน)'],
+      offline:  ['is-off',    'ต่อเซิร์ฟเวอร์ไม่ได้ — แสดงคะแนนเฉพาะเครื่องนี้' + (detail ? ' (' + detail + ')' : '')],
+      nocloud:  ['is-off',    'ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์ — คะแนนเก็บในเครื่องนี้เท่านั้น ' +
+                              '(ใส่ URL ที่ตัวแปร CLOUD.url ใน app.js เพื่อรวมคะแนนทั้งห้อง)']
+    };
+    var m = map[state] || map.nocloud;
+    el.className = 'board-status ' + m[0];
+    el.textContent = m[1];
+  }
+
+  /** ดึงคะแนนล่าสุดแล้ววาดตาราง (แสดงของเครื่องไปก่อน แล้วค่อยอัปเดตเมื่อเซิร์ฟเวอร์ตอบ) */
   function renderBoard() {
-    var all = loadScores();
+    $('btnBoardReset').hidden = (S.seat !== HOST_SEAT);   // ปุ่มล้างคะแนน = เฉพาะ host
+    drawBoard(loadScores());
+
+    if (!cloudOn()) { setBoardStatus('nocloud'); return; }
+    setBoardStatus('loading');
+    cloudGetAll()
+      .then(function (remote) {
+        scoreCache = remote;
+        drawBoard(remote);
+        renderSeatGrid();
+        setBoardStatus('online');
+      })
+      .catch(function (e) { setBoardStatus('offline', e.message); });
+  }
+
+  function drawBoard(all) {
     var rows = [];
     for (var i = 1; i <= SEAT_COUNT; i++) {
       var rec = all[i];
@@ -1524,7 +1636,7 @@
      10.8) หน้าเลือกเลขที่
      ========================================================= */
   function renderSeatGrid() {
-    var all = loadScores();
+    var all = currentScores();
     var saved = null;
     try { saved = parseInt(localStorage.getItem(LS_SEAT), 10) || null; } catch (e) {}
     var html = '';
@@ -1626,12 +1738,18 @@
     $('btnOverBoard').addEventListener('click', openBoard);
     $('btnBoardClose').addEventListener('click', function () { closeModal('boardModal'); });
     $('btnBoardDone').addEventListener('click', function () { closeModal('boardModal'); });
+    $('btnBoardRefresh').addEventListener('click', function () { scoreCache = null; renderBoard(); });
+
     $('btnBoardReset').addEventListener('click', function () {
-      if (!confirm('ล้างคะแนนของทุกเลขที่ในเครื่องนี้? กู้คืนไม่ได้')) return;
+      if (S.seat !== HOST_SEAT) return;                    // กันพลาด: เฉพาะ host เท่านั้น
+      if (!confirm('ล้างคะแนนของทุกเลขที่' + (cloudOn() ? ' (รวมบนเซิร์ฟเวอร์ด้วย)' : '') + '?\nกู้คืนไม่ได้')) return;
       saveScores({});
-      renderBoard();
-      renderSeatGrid();
-      toast('ล้างคะแนนทั้งหมดแล้ว');
+      scoreCache = null;
+      if (!cloudOn()) { renderBoard(); renderSeatGrid(); toast('ล้างคะแนนทั้งหมดแล้ว'); return; }
+      setBoardStatus('loading');
+      cloudClear()
+        .then(function () { renderBoard(); renderSeatGrid(); toast('ล้างคะแนนทั้งห้องแล้ว'); })
+        .catch(function (e) { setBoardStatus('offline', e.message); toast('ล้างบนเซิร์ฟเวอร์ไม่สำเร็จ', 'bad'); });
     });
 
     /* ---- หน้าเฉลย ---- */
@@ -1738,6 +1856,11 @@
     bindEvents();
     bindDragAndDrop();
     renderSeatGrid();          // หน้าแรกคือให้เลือกเลขที่ก่อนเสมอ
+    if (cloudOn()) {           // ดึงคะแนนห้องมาโชว์บนปุ่มเลขที่ตั้งแต่แรก
+      cloudGetAll()
+        .then(function (remote) { scoreCache = remote; renderSeatGrid(); })
+        .catch(function () {});
+    }
 
     loadAllData()
       .then(onDataReady)
