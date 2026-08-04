@@ -456,6 +456,51 @@
   }
 
   /* =========================================================
+     3.5) ระบบบัญชีผู้เล่น (เลขที่ 1–30) + Leaderboard
+     เก็บใน localStorage ของเครื่องที่เล่น (เว็บเป็น static ไม่มีเซิร์ฟเวอร์)
+     ========================================================= */
+  var SEAT_COUNT = 30;
+  var LS_SCORES = 'polymer.scores.v1';
+  var LS_SEAT = 'polymer.seat';
+
+  function loadScores() {
+    try {
+      var raw = localStorage.getItem(LS_SCORES);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function saveScores(obj) {
+    try { localStorage.setItem(LS_SCORES, JSON.stringify(obj)); } catch (e) {}
+  }
+
+  /** คะแนนรวม = ดาวสะสม + (ความแม่นยำ % × 2) */
+  function computeScore(stars, accPercent) {
+    return Math.round(stars + accPercent * 2);
+  }
+
+  /** รอบไหน "ดีกว่า" — ใช้เกณฑ์เดียวกับการจัดอันดับ */
+  function isBetterRun(a, b) {
+    if (!b) return true;
+    if (a.score !== b.score) return a.score > b.score;
+    if (a.acc !== b.acc) return a.acc > b.acc;
+    if (a.orders !== b.orders) return a.orders > b.orders;
+    return a.correct > b.correct;
+  }
+
+  function recordRun(run) {
+    if (!S.seat) return { saved: false, reason: 'no-seat' };
+    if (run.usedHelper) return { saved: false, reason: 'helper' };
+    if (!run.attempts) return { saved: false, reason: 'no-answer' };   // ไม่ได้ตอบเลย ไม่นับ
+    var all = loadScores();
+    var rec = all[S.seat] || { plays: 0, best: null };
+    rec.plays = (rec.plays || 0) + 1;
+    if (isBetterRun(run, rec.best)) rec.best = run;
+    all[S.seat] = rec;
+    saveScores(all);
+    return { saved: true, isBest: rec.best === run };
+  }
+
+  /* =========================================================
      4) GAME STATE
      ========================================================= */
   var TOTAL_PHASES = 3;
@@ -480,6 +525,9 @@
     ready: false,
     running: false,
     started: false,          // เริ่มเกมรอบนี้แล้วหรือยัง (ใช้ตัดสินว่ากด "เล่นต่อ" ได้ไหม)
+    seat: null,              // เลขที่ผู้เล่น 1–30
+    history: [],             // บันทึกทุกข้อที่ตอบ ไว้ทำหน้าเฉลย
+    usedHelper: false,       // กดปุ่มลับไปแล้วหรือยัง (รอบนี้จะไม่ขึ้นอันดับ)
     phase: 0,                 // 0..3
     consecutiveErrors: 0,
     stars: 0,
@@ -836,6 +884,21 @@
     var catalystOK = S.catalyst === q.lock;
     var answerOK = placed.text === q.answer;
 
+    // เก็บไว้ทำหน้าเฉลยตอนจบเกม
+    S.history.push({
+      n: S.history.length + 1,
+      type: q.type,
+      promptArt: q.promptArt, promptText: q.prompt,
+      answerArt: q.answerArt, answerText: q.answer,
+      pickedArt: placed.art, pickedText: placed.text,
+      lock: q.lock, pickedLock: S.catalyst,
+      cond: q.cond || '',
+      catalystOK: catalystOK, answerOK: answerOK,
+      ok: catalystOK && answerOK,
+      helped: !!S.helpedThis
+    });
+    S.helpedThis = false;
+
     if (catalystOK && answerOK) {
       S.correctAttempts++;
       S.consecutiveErrors = 0;
@@ -1003,8 +1066,181 @@
              : acc >= 50 ? 'ระดับ : กำลังงอกงาม ฝึกต่ออีกนิด'
              : 'ระดับ : เมล็ดพันธุ์ใหม่ ลองอ่านคู่มือแล้วลุยอีกครั้ง';
     $('overRank').textContent = rank;
+
+    /* ---- คะแนนรวม + บันทึกลง Leaderboard ---- */
+    var score = computeScore(S.stars, acc);
+    var run = {
+      score: score, stars: S.stars, acc: acc, orders: S.orders,
+      correct: S.correctAttempts, attempts: S.attempts,
+      usedHelper: S.usedHelper, at: Date.now()
+    };
+    var res = recordRun(run);
+    $('sumScore').textContent = score;
+    $('sumScoreNote').textContent =
+      res.saved ? (res.isBest ? '(สถิติใหม่ของเลขที่ ' + S.seat + '!)' : '(ยังไม่ชนะสถิติเดิม)')
+                : res.reason === 'helper' ? '(ใช้ตัวช่วยลับ — ไม่บันทึกลงอันดับ)'
+                : res.reason === 'no-answer' ? '(ยังไม่ได้ตอบข้อไหนเลย — ไม่บันทึก)'
+                : '(ยังไม่ได้เลือกเลขที่)';
+
+    renderReview('all');
     openModal('overModal');
     Audio_.sfx('reward');
+  }
+
+  /* =========================================================
+     10.5) หน้าเฉลย — บอกว่าผิดข้อไหน เพราะอะไร
+     ========================================================= */
+  var WHY_LOCK = {
+    addition: 'มอนอเมอร์มีพันธะคู่ C=C (หรือเป็นวงแหวนที่เปิดวงได้) จึงต่อกันตรง ๆ ' +
+              'โดย<b>ไม่คายโมเลกุลเล็ก</b> → เป็นปฏิกิริยา “เติม”',
+    condensation: 'มอนอเมอร์มีหมู่ฟังก์ชัน 2 หมู่ (เช่น –OH, –COOH, –NH₂, –COCl) มาต่อกันแล้ว ' +
+                  '<b>คายโมเลกุลเล็กออกมา</b> → เป็นปฏิกิริยา “ควบแน่น”'
+  };
+
+  function reasonOf(h) {
+    if (h.ok) return { cls: 'ok', title: 'ตอบถูก', detail: '' };
+    if (!h.catalystOK && !h.answerOK) {
+      return { cls: 'bad', title: 'ผิดทั้งการ์ดคำตอบและบัวรดน้ำ',
+               detail: 'เลือกการ์ดไม่ตรงกับโจทย์ และเลือกชนิดปฏิกิริยาผิดด้วย' };
+    }
+    if (!h.catalystOK) {
+      return { cls: 'bad', title: 'การ์ดถูก แต่เลือกบัวรดน้ำผิดชนิด',
+               detail: 'คุณเลือก “' + LOCK_META[h.pickedLock].th + '” แต่ข้อนี้เป็น “' +
+                       LOCK_META[h.lock].th + '”' };
+    }
+    return { cls: 'bad', title: 'บัวรดน้ำถูก แต่การ์ดคำตอบผิด',
+             detail: 'ชนิดปฏิกิริยาถูกแล้ว แต่หยิบการ์ดผิดใบ' };
+  }
+
+  function renderReview(filter) {
+    var list = $('reviewList');
+    var items = S.history;
+    var wrong = items.filter(function (h) { return !h.ok; });
+    $('rvCountAll').textContent = items.length;
+    $('rvCountWrong').textContent = wrong.length;
+
+    var show = filter === 'wrong' ? wrong : items;
+    if (!show.length) {
+      list.innerHTML = '<p class="rv-empty">' +
+        (filter === 'wrong' ? 'ไม่มีข้อที่ตอบผิดเลย เยี่ยมมาก!' : 'ยังไม่ได้ตอบข้อไหนเลย') + '</p>';
+      return;
+    }
+
+    list.innerHTML = show.map(function (h) {
+      var r = reasonOf(h);
+      var meta = LOCK_META[h.lock];
+      var pickedMeta = LOCK_META[h.pickedLock];
+      return '' +
+      '<article class="rv-item rv-' + r.cls + '">' +
+        '<header class="rv-head">' +
+          '<span class="rv-no">ข้อ ' + h.n + '</span>' +
+          '<span class="rv-badge rv-' + r.cls + '">' + (h.ok ? '✔ ถูก' : '✕ ผิด') + '</span>' +
+          '<span class="rv-type">' + TYPE_META[h.type].badge + '</span>' +
+          (h.helped ? '<span class="rv-help">ใช้ตัวช่วย</span>' : '') +
+        '</header>' +
+
+        '<div class="rv-q"><span class="rv-lbl">โจทย์</span>' +
+          '<span class="rv-art">' + artHTML(h.promptArt, 'card-eq') + '</span>' +
+          '<span class="rv-txt">' + escapeHTML(h.promptText) + '</span>' +
+        '</div>' +
+
+        (h.ok ? '' :
+        '<div class="rv-q rv-picked"><span class="rv-lbl">คุณตอบ</span>' +
+          '<span class="rv-art">' + artHTML(h.pickedArt, 'card-eq') + '</span>' +
+          '<span class="rv-txt">' + escapeHTML(h.pickedText) + '</span>' +
+        '</div>') +
+
+        '<div class="rv-q rv-ans"><span class="rv-lbl">เฉลย</span>' +
+          '<span class="rv-art">' + artHTML(h.answerArt, 'card-eq') + '</span>' +
+          '<span class="rv-txt">' + escapeHTML(h.answerText) + '</span>' +
+        '</div>' +
+
+        '<div class="rv-cat">' +
+          '<span>บัวรดน้ำที่ถูก : <b class="' + meta.cls + '">' + meta.th + '</b></span>' +
+          (h.catalystOK ? '' :
+            '<span class="rv-x">คุณเลือก : <b class="' + pickedMeta.cls + '">' + pickedMeta.th + '</b></span>') +
+        '</div>' +
+
+        '<p class="rv-reason"><b>' + r.title + '</b>' +
+          (r.detail ? ' — ' + r.detail : '') + '</p>' +
+        '<p class="rv-why"><b>ทำไมข้อนี้เป็น “' + meta.th + '” :</b> ' + WHY_LOCK[h.lock] +
+          (h.cond ? ' <span class="rv-cond">(เงื่อนไข: ' + escapeHTML(h.cond) + ')</span>' : '') + '</p>' +
+      '</article>';
+    }).join('');
+  }
+
+  /* =========================================================
+     10.6) Leaderboard
+     ========================================================= */
+  function renderBoard() {
+    var all = loadScores();
+    var rows = [];
+    for (var i = 1; i <= SEAT_COUNT; i++) {
+      var rec = all[i];
+      if (rec && rec.best) rows.push({ seat: i, plays: rec.plays || 0, b: rec.best });
+    }
+    rows.sort(function (x, y) {
+      var a = x.b, b = y.b;
+      if (a.score !== b.score) return b.score - a.score;
+      if (a.acc !== b.acc) return b.acc - a.acc;
+      if (a.orders !== b.orders) return b.orders - a.orders;
+      return b.correct - a.correct;
+    });
+
+    var body = $('boardBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="board-empty">ยังไม่มีใครทำคะแนนไว้ — เล่นให้จบเกมแล้วคะแนนจะขึ้นที่นี่</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (r, i) {
+      var medal = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      return '<tr class="' + (r.seat === S.seat ? 'is-me ' : '') + medal + '">' +
+        '<td class="bd-rank">' + (i + 1) + '</td>' +
+        '<td class="bd-seat">' + r.seat + '</td>' +
+        '<td class="bd-score">' + r.b.score + '</td>' +
+        '<td>' + r.b.stars + '</td>' +
+        '<td>' + r.b.acc + '%</td>' +
+        '<td>' + r.b.orders + '</td>' +
+        '<td>' + r.plays + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* =========================================================
+     10.7) ปุ่มลับ — เติมคำตอบ + เลือกบัวรดน้ำให้
+     ========================================================= */
+  function magicSolve() {
+    if (!S.running || S.busy || !S.question) return;
+    var q = S.question;
+    // หาการ์ดใบที่ถูกในกองตัวเลือก
+    var right = null;
+    for (var i = 0; i < S.pool.length; i++) {
+      if (S.pool[i].text === q.answer) { right = S.pool[i]; break; }
+    }
+    if (!right) return;
+
+    // เคลียร์ช่องปัจจุบันก่อน แล้วค่อยวางใบที่ถูก
+    if (S.slots[S.phase]) {
+      var old = findCard(S.slots[S.phase].key);
+      if (old) old.used = false;
+      S.slots[S.phase] = null;
+    }
+    right.used = false;
+    placeCard(right.key, S.phase);
+
+    // เลือกบัวรดน้ำให้ตรงชนิด
+    S.catalyst = q.lock;
+    $$('.catalyst').forEach(function (b) {
+      b.setAttribute('aria-checked', b.dataset.catalyst === S.catalyst ? 'true' : 'false');
+    });
+    $('catalystHint').classList.remove('is-warn');
+    $('catalystHint').textContent = 'เลือกบัวรดน้ำ “' + LOCK_META[S.catalyst].th + '” แล้ว — ต่อไปวางการ์ดคำตอบ';
+
+    S.usedHelper = true;
+    S.helpedThis = true;
+    updateSubmitState();
+    Audio_.sfx('place');
+    toast('ตัวช่วยลับ: เติมคำตอบให้แล้ว (รอบนี้จะไม่ถูกบันทึกลงอันดับ)', '', 2200);
   }
 
   /* =========================================================
@@ -1246,6 +1482,9 @@
       S.timeLeft = ROUND_SECONDS;
       S.customer = { name: CUSTOMER_NAME, want: pick(ORDERS) };
       S.busy = false;
+      S.history = [];
+      S.usedHelper = false;
+      S.helpedThis = false;
       $$('.catalyst').forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
       $('catalystHint').textContent = 'เลือกชนิดปฏิกิริยาให้ตรงกับโจทย์ก่อนยืนยัน';
       $('catalystHint').classList.remove('is-warn');
@@ -1272,6 +1511,34 @@
   /* =========================================================
      15) IMAGE FALLBACKS
      ========================================================= */
+  /* =========================================================
+     10.8) หน้าเลือกเลขที่
+     ========================================================= */
+  function renderSeatGrid() {
+    var all = loadScores();
+    var saved = null;
+    try { saved = parseInt(localStorage.getItem(LS_SEAT), 10) || null; } catch (e) {}
+    var html = '';
+    for (var i = 1; i <= SEAT_COUNT; i++) {
+      var rec = all[i];
+      var best = rec && rec.best ? rec.best.score : null;
+      html += '<button class="seat-btn' + (saved === i ? ' is-last' : '') + '" type="button" data-seat="' + i + '">' +
+                '<span class="seat-no">' + i + '</span>' +
+                '<span class="seat-best">' + (best != null ? best + ' คะแนน' : 'ยังไม่เล่น') + '</span>' +
+              '</button>';
+    }
+    $('seatGrid').innerHTML = html;
+  }
+
+  function setSeat(n) {
+    S.seat = n;
+    try { localStorage.setItem(LS_SEAT, String(n)); } catch (e) {}
+    $('seatBadge').textContent = n;
+    $('whoSeat').textContent = 'เลขที่ ' + n;
+    closeModal('loginScreen');
+    openModal('landingScreen');
+  }
+
   /** กลับไปหน้าเมนูแรก (หยุดเวลาไว้ แล้วเล่นต่อได้เมื่อกดเข้าเกมอีกครั้ง) */
   function backToMenu() {
     stopTimer();
@@ -1325,6 +1592,57 @@
     });
 
     $('btnBackMenu').addEventListener('click', backToMenu);
+
+    /* ---- เลือกเลขที่ ---- */
+    $('seatGrid').addEventListener('click', function (e) {
+      var b = e.target.closest('.seat-btn');
+      if (!b) return;
+      Audio_.unlock();
+      setSeat(parseInt(b.dataset.seat, 10));
+      Audio_.sfx('pop');
+    });
+    $('btnSwitchSeat').addEventListener('click', function () {
+      // เปลี่ยนคนเล่น = เริ่มรอบใหม่ ไม่ให้คะแนนปนกัน
+      stopTimer();
+      S.running = false; S.started = false;
+      closeModal('landingScreen');
+      renderSeatGrid();
+      openModal('loginScreen');
+    });
+
+    /* ---- Leaderboard ---- */
+    function openBoard() { renderBoard(); openModal('boardModal'); }
+    $('btnOpenBoard').addEventListener('click', openBoard);
+    $('btnOpenBoardFromLogin').addEventListener('click', openBoard);
+    $('btnOverBoard').addEventListener('click', openBoard);
+    $('btnBoardClose').addEventListener('click', function () { closeModal('boardModal'); });
+    $('btnBoardDone').addEventListener('click', function () { closeModal('boardModal'); });
+    $('btnBoardReset').addEventListener('click', function () {
+      if (!confirm('ล้างคะแนนของทุกเลขที่ในเครื่องนี้? กู้คืนไม่ได้')) return;
+      saveScores({});
+      renderBoard();
+      renderSeatGrid();
+      toast('ล้างคะแนนทั้งหมดแล้ว');
+    });
+
+    /* ---- หน้าเฉลย ---- */
+    $('btnOverReview').addEventListener('click', function () {
+      renderReview('all');
+      $$('.gtab[data-rv]').forEach(function (b) { b.classList.toggle('is-active', b.dataset.rv === 'all'); });
+      openModal('reviewModal');
+    });
+    $('btnReviewClose').addEventListener('click', function () { closeModal('reviewModal'); });
+    $('btnReviewDone').addEventListener('click', function () { closeModal('reviewModal'); });
+    $$('.gtab[data-rv]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('.gtab[data-rv]').forEach(function (x) { x.classList.remove('is-active'); });
+        b.classList.add('is-active');
+        renderReview(b.dataset.rv);
+      });
+    });
+
+    /* ---- ปุ่มลับ ---- */
+    $('btnMagic').addEventListener('click', magicSolve);
 
     $('btnRestartFromMenu').addEventListener('click', function () {
       Audio_.unlock();
@@ -1402,6 +1720,7 @@
     bindImageFallbacks();
     bindEvents();
     bindDragAndDrop();
+    renderSeatGrid();          // หน้าแรกคือให้เลือกเลขที่ก่อนเสมอ
 
     loadAllData()
       .then(onDataReady)

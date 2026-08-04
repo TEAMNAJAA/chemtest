@@ -19,13 +19,34 @@
 <img class="deco deco-bl" src="assets/images/ui/vine-bl.png" alt="" aria-hidden="true">
 
 <!-- ============================================================
+     0) LOGIN — เลือกเลขที่ 1–30
+     ============================================================ -->
+<div class="overlay is-open" id="loginScreen" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="login-card">
+    <img class="landing-plank" src="assets/images/ui/title-plank.png" alt="ปฏิกิริยาการเกิดพอลิเมอร์">
+    <h2 class="login-title" id="loginTitle">เลือก “เลขที่” ของคุณเพื่อเข้าสู่ระบบ</h2>
+    <p class="login-sub">คะแนนของแต่ละเลขที่จะถูกบันทึกแยกกัน และนำไปจัดอันดับใน Leaderboard</p>
+    <div class="seat-grid" id="seatGrid" role="listbox" aria-label="เลขที่ 1 ถึง 30"></div>
+    <div class="login-actions">
+      <button class="btn btn-secondary" id="btnOpenBoardFromLogin" type="button">ดูอันดับคะแนน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      1) LANDING MODAL
      ============================================================ -->
-<div class="overlay is-open" id="landingScreen" role="dialog" aria-modal="true" aria-labelledby="landingTitle">
+<div class="overlay" id="landingScreen" role="dialog" aria-modal="true" aria-labelledby="landingTitle" hidden>
   <div class="landing-card">
     <img class="landing-plank" src="assets/images/ui/title-plank.png"
          alt="ปฏิกิริยาการเกิดพอลิเมอร์" id="landingTitle">
     <p class="landing-sub">Polymerization Reaction Game — เกมการศึกษาเคมีพอลิเมอร์</p>
+
+    <div class="who-strip">
+      <span class="who-label">ผู้เล่น</span>
+      <span class="who-seat" id="whoSeat">เลขที่ –</span>
+      <button class="btn btn-wood btn-sm" id="btnSwitchSeat" type="button">เปลี่ยนผู้เล่น</button>
+    </div>
 
     <img class="landing-boy" src="assets/images/ui/customer.png" alt="ตัวละครลูกค้าในเกม">
 
@@ -38,6 +59,7 @@
       <button class="btn btn-primary btn-xl" id="btnPlay" type="button">เข้าเล่นเกมเลย</button>
       <button class="btn btn-secondary btn-xl" id="btnLearnFromLanding" type="button">เลือกโหมดเรียนรู้</button>
       <button class="btn btn-wood" id="btnRestartFromMenu" type="button" hidden>เริ่มเกมใหม่ตั้งแต่ต้น</button>
+      <button class="btn btn-wood" id="btnOpenBoard" type="button">อันดับคะแนน (Leaderboard)</button>
     </div>
 
     <ul class="landing-tips">
@@ -71,6 +93,7 @@
     </h1>
 
     <div class="topbar-right">
+      <span class="seat-badge" id="seatBadge" title="เลขที่ผู้เล่น">–</span>
       <div class="timer-plank" id="timerBox">
         <span class="timer-value" id="timerValue">08:00</span>
         <span class="sr-only">เวลาที่เหลือ</span>
@@ -251,6 +274,8 @@
       <div class="progress-fill" id="progressFill"></div>
     </div>
     <span class="progress-pct" id="progressPct">0%</span>
+    <!-- ปุ่มลับ: กดแล้วเติมคำตอบ + เลือกบัวรดน้ำให้อัตโนมัติ -->
+    <button class="magic-dot" id="btnMagic" type="button" aria-label="ตัวช่วยลับ" title=""></button>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -390,10 +415,78 @@
       <div class="sum"><b id="sumAcc">0%</b><span>ความแม่นยำ</span></div>
     </div>
     <p class="reward-total" id="overRank">—</p>
+    <p class="score-line">คะแนนรวม <b id="sumScore">0</b> <span id="sumScoreNote"></span></p>
     <div class="control-row over-actions">
-      <button class="btn btn-primary btn-xl" id="btnRestart" type="button">เล่นใหม่อีกครั้ง</button>
-      <button class="btn btn-secondary" id="btnOverGuide" type="button">ทบทวนคู่มือ</button>
+      <button class="btn btn-primary btn-xl" id="btnOverReview" type="button">ดูเฉลยทุกข้อ</button>
+      <button class="btn btn-secondary" id="btnOverBoard" type="button">อันดับคะแนน</button>
+      <button class="btn btn-wood" id="btnRestart" type="button">เล่นใหม่</button>
+      <button class="btn btn-wood" id="btnOverGuide" type="button">ทบทวนคู่มือ</button>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     7) LEADERBOARD
+     ============================================================ -->
+<div class="overlay" id="boardModal" role="dialog" aria-modal="true" aria-labelledby="boardTitle" hidden>
+  <div class="guide-card board-card">
+    <header class="guide-head">
+      <h2 id="boardTitle">อันดับคะแนน — เลขที่ 1–30</h2>
+      <button class="btn btn-close" id="btnBoardClose" type="button" aria-label="ปิด">✕</button>
+    </header>
+
+    <div class="board-rule">
+      <b>เกณฑ์การจัดอันดับ</b> — เก็บ “รอบที่ดีที่สุด” ของแต่ละเลขที่ แล้วเรียงตามลำดับนี้
+      <ol>
+        <li><b>คะแนนรวม</b> = ดาวสะสม + (ความแม่นยำ % × 2)
+          <span class="rule-note">ดาว: ตอบถูก 1 Phase = +20, ส่งออเดอร์ครบ 3 Phase = +50</span></li>
+        <li>ถ้าคะแนนเท่ากัน → <b>ความแม่นยำ</b> สูงกว่าอยู่บนกว่า</li>
+        <li>ถ้ายังเท่ากัน → <b>จำนวนออเดอร์สำเร็จ</b> มากกว่า</li>
+        <li>ถ้ายังเท่ากันอีก → <b>ตอบถูกจำนวนครั้ง</b> มากกว่า</li>
+      </ol>
+      <p class="rule-warn">รอบที่กด “ตัวช่วยลับ” จะไม่ถูกบันทึกลงอันดับ</p>
+    </div>
+
+    <div class="guide-body board-body">
+      <div class="table-scroll">
+        <table class="guide-table board-table">
+          <thead>
+            <tr><th>อันดับ</th><th>เลขที่</th><th>คะแนน</th><th>ดาว</th><th>แม่นยำ</th><th>ออเดอร์</th><th>เล่นไป</th></tr>
+          </thead>
+          <tbody id="boardBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="guide-foot board-foot">
+      <button class="btn btn-wood" id="btnBoardReset" type="button">ล้างคะแนนทั้งหมด</button>
+      <button class="btn btn-primary" id="btnBoardDone" type="button">ปิด</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================================================
+     8) ANSWER REVIEW — เฉลยทุกข้อ
+     ============================================================ -->
+<div class="overlay" id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle" hidden>
+  <div class="guide-card">
+    <header class="guide-head">
+      <h2 id="reviewTitle">เฉลยทุกข้อที่ตอบไป</h2>
+      <button class="btn btn-close" id="btnReviewClose" type="button" aria-label="ปิด">✕</button>
+    </header>
+
+    <div class="guide-tabs" role="tablist">
+      <button class="gtab is-active" data-rv="all" type="button">ทั้งหมด (<span id="rvCountAll">0</span>)</button>
+      <button class="gtab" data-rv="wrong" type="button">เฉพาะที่ผิด (<span id="rvCountWrong">0</span>)</button>
+    </div>
+
+    <div class="guide-body">
+      <div class="review-list" id="reviewList"></div>
+    </div>
+
+    <footer class="guide-foot">
+      <button class="btn btn-primary" id="btnReviewDone" type="button">ปิด</button>
+    </footer>
   </div>
 </div>
 

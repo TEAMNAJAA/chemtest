@@ -273,6 +273,69 @@ img{max-width:100%;}
 .landing-tips::marker{color:var(--leaf-400);}
 
 /* ============================================================
+   หน้าเลือกเลขที่ (Login)
+   ============================================================ */
+.login-card{
+  width:min(760px,100%); margin:auto; text-align:center;
+  padding:clamp(18px,3vw,30px);
+  border-radius:var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.25)),
+    var(--wood-tex) repeat center/auto 100%;
+  border:4px solid var(--wood-edge);
+  outline:2px solid rgba(200,150,90,.3); outline-offset:-10px;
+  box-shadow:0 24px 60px rgba(0,0,0,.7);
+  animation:popIn .4s cubic-bezier(.2,1.4,.4,1);
+}
+.login-title{margin:10px 0 4px; font-size:clamp(16px,2.2vw,24px); color:var(--gold-400);}
+.login-sub{margin:0 0 16px; font-size:clamp(11.5px,1.2vw,14px); color:var(--text-dim);}
+
+.seat-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(84px,1fr));
+  gap:8px; margin-bottom:16px;
+}
+.seat-btn{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  min-height:60px; padding:8px 4px; cursor:pointer; font-family:inherit;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(180deg,var(--parch-100),var(--parch-300));
+  border:2px solid #b9955f; color:var(--parch-ink);
+  box-shadow:0 3px 0 rgba(0,0,0,.45);
+  transition:transform .12s ease, filter .15s ease;
+}
+.seat-btn:hover{transform:translateY(-3px); filter:brightness(1.07);}
+.seat-btn:active{transform:translateY(1px);}
+.seat-btn:focus-visible{outline:3px solid var(--gold-400); outline-offset:2px;}
+.seat-no{font-size:clamp(17px,2vw,23px); font-weight:700; color:#5c3f12; line-height:1;}
+.seat-best{font-size:9.5px; color:#7a5c2e;}
+.seat-btn.is-last{
+  border-color:var(--gold-400);
+  box-shadow:0 3px 0 rgba(0,0,0,.45), 0 0 0 3px rgba(242,196,107,.5);
+}
+.login-actions{display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+
+.who-strip{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-bottom:12px; flex-wrap:wrap;
+}
+.who-label{font-size:12px; color:var(--text-dim);}
+.who-seat{
+  font-size:clamp(13px,1.4vw,17px); font-weight:700; color:var(--gold-400);
+  background:rgba(0,0,0,.4); border:2px solid rgba(242,196,107,.4);
+  border-radius:999px; padding:4px 16px;
+}
+.btn-sm{min-height:36px; padding:6px 14px; font-size:12px;}
+
+.seat-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:34px; height:34px; padding:0 8px;
+  border-radius:999px; font-weight:700; font-size:14px;
+  color:#3a2408; background:linear-gradient(180deg,var(--gold-400),var(--gold-600));
+  border:2px solid #6d4713; box-shadow:0 2px 6px rgba(0,0,0,.5);
+  flex:0 0 auto;
+}
+
+/* ============================================================
    หน้าจอเกม
    ============================================================ */
 .game{
@@ -792,6 +855,107 @@ img{max-width:100%;}
   flex:0 0 auto; min-width:42px; text-align:right; font-variant-numeric:tabular-nums;
 }
 
+/* ---------- ปุ่มลับ (ตัวช่วย) ---------- */
+.magic-dot{
+  width:12px; height:12px; padding:0; flex:0 0 auto;
+  border-radius:50%; cursor:pointer;
+  background:rgba(242,196,107,.1);
+  border:1px solid rgba(242,196,107,.16);
+  transition:.25s ease;
+}
+.magic-dot:hover{
+  background:rgba(242,196,107,.85);
+  box-shadow:0 0 12px rgba(242,196,107,.9);
+  transform:scale(1.25);
+}
+.magic-dot:active{transform:scale(.9);}
+.magic-dot:focus-visible{outline:2px solid var(--gold-400); outline-offset:2px;}
+
+/* ============================================================
+   Leaderboard
+   ============================================================ */
+.board-card{width:min(880px,100%);}
+.board-rule{
+  padding:12px 18px;
+  background:rgba(0,0,0,.34);
+  border-bottom:2px solid var(--wood-edge);
+  font-size:clamp(11px,1.1vw,13px); line-height:1.65; color:var(--text-dim);
+}
+.board-rule b{color:var(--gold-400);}
+.board-rule ol{margin:6px 0 0; padding-left:20px;}
+.board-rule li{margin-bottom:3px;}
+.rule-note{display:block; font-size:.92em; color:#9d8158;}
+.rule-warn{margin:8px 0 0; color:#ffb37a; font-size:.95em;}
+.board-body{padding:0;}
+.board-table{min-width:520px;}
+.board-table td{text-align:center;}
+.board-table td:first-child,.board-table td:nth-child(2){font-weight:700;}
+.bd-score{color:#5c3f12; font-weight:700; font-size:1.1em;}
+.board-table tr.is-me{background:rgba(242,196,107,.35) !important; box-shadow:inset 3px 0 0 var(--gold-500);}
+.board-table tr.gold .bd-rank{color:#b8860b;}
+.board-table tr.silver .bd-rank{color:#6b7280;}
+.board-table tr.bronze .bd-rank{color:#a0522d;}
+.board-empty{text-align:center; padding:26px 12px; color:#7a5c2e;}
+.board-foot{justify-content:space-between; gap:10px;}
+.score-line{margin:0 0 14px; font-size:clamp(13px,1.4vw,17px); color:var(--parch-100);}
+.score-line b{color:var(--gold-400); font-size:1.3em;}
+.score-line span{display:block; font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+
+/* ============================================================
+   หน้าเฉลย
+   ============================================================ */
+.review-list{display:grid; gap:12px;}
+.rv-empty{text-align:center; padding:26px; color:#7a5c2e;}
+.rv-item{
+  border-radius:var(--radius); padding:12px 14px;
+  background:rgba(255,255,255,.62); border-left:6px solid;
+}
+.rv-item.rv-ok{border-color:var(--leaf-500);}
+.rv-item.rv-bad{border-color:var(--danger-500);}
+.rv-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+.rv-no{font-weight:700; color:#5c3f12; font-size:13px;}
+.rv-badge{font-size:11px; font-weight:700; border-radius:999px; padding:2px 10px; color:#fff;}
+.rv-badge.rv-ok{background:var(--leaf-600);}
+.rv-badge.rv-bad{background:var(--danger-500);}
+.rv-type{font-size:11px; color:#7a5c2e;}
+.rv-help{font-size:10.5px; color:#fff; background:#8a6a3a; border-radius:999px; padding:2px 9px;}
+
+.rv-q{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:6px 8px; border-radius:8px; margin-bottom:5px;
+  background:rgba(255,255,255,.5);
+}
+.rv-q.rv-picked{background:rgba(192,57,43,.13);}
+.rv-q.rv-ans{background:rgba(79,154,53,.16);}
+.rv-lbl{
+  flex:0 0 54px; font-size:11px; font-weight:700; color:#5c3f12;
+}
+.rv-art{display:flex; align-items:center; min-width:0;}
+.rv-art .card-eq{max-height:34px;}
+.rv-art .eq-stack{flex-direction:row; gap:6px; align-items:center;}
+.rv-art .eq-stack .card-eq{max-height:26px;}
+.rv-art .eq-arrow{width:auto;}
+.rv-art .eq-arrow::after{transform:rotate(-90deg);}
+.rv-txt{
+  font-family:var(--font-mono); font-size:10.5px; color:#7a5c2e;
+  overflow-wrap:anywhere; flex:1 1 140px; min-width:0;
+}
+.rv-cat{
+  display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px;
+  color:#5c3f12; margin:6px 0 4px;
+}
+.rv-cat b.t-add{color:var(--add-600);}
+.rv-cat b.t-cond{color:var(--cond-600);}
+.rv-x b{color:var(--danger-500);}
+.rv-reason{margin:4px 0 2px; font-size:clamp(11.5px,1.15vw,13.5px); color:#3d2a0c;}
+.rv-item.rv-bad .rv-reason b{color:var(--danger-500);}
+.rv-item.rv-ok .rv-reason b{color:var(--cond-600);}
+.rv-why{
+  margin:4px 0 0; font-size:clamp(10.5px,1.05vw,12.5px); line-height:1.6; color:#5c3f12;
+  background:rgba(224,163,63,.18); border-radius:8px; padding:7px 10px;
+}
+.rv-cond{color:#7a5c2e;}
+
 /* ============================================================
    Toast
    ============================================================ */
@@ -1099,6 +1263,18 @@ img{max-width:100%;}
   .summary-grid{grid-template-columns:1fr 1fr;}
   .landing-actions .btn{width:100%;}
   .deco{display:none;}
+
+  /* login / leaderboard / เฉลย บนมือถือ */
+  .seat-grid{grid-template-columns:repeat(auto-fit,minmax(66px,1fr)); gap:6px;}
+  .seat-btn{min-height:56px;}
+  .seat-no{font-size:18px;}
+  .seat-best{font-size:8.5px;}
+  .board-rule{font-size:11px; padding:10px 12px;}
+  .over-actions .btn{width:100%;}
+  .rv-lbl{flex:0 0 100%;}
+  .rv-q{gap:6px;}
+  .rv-art .card-eq{max-height:30px;}
+  .magic-dot{width:16px; height:16px;}
 }
 
 @media (max-width:380px){
