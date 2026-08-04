@@ -478,18 +478,18 @@
     return Math.round(stars + accPercent * 2);
   }
 
-  /** รอบไหน "ดีกว่า" — ใช้เกณฑ์เดียวกับการจัดอันดับ */
-  function isBetterRun(a, b) {
-    if (!b) return true;
-    if (a.score !== b.score) return a.score > b.score;
-    if (a.acc !== b.acc) return a.acc > b.acc;
-    if (a.orders !== b.orders) return a.orders > b.orders;
-    return a.correct > b.correct;
+  /** เทียบสองรอบว่ารอบไหนดีกว่า (ใช้ทั้งตอนเก็บสถิติและตอนเรียงอันดับ) */
+  function cmpRun(a, b) {
+    if (a.score !== b.score) return b.score - a.score;
+    if (a.acc !== b.acc) return b.acc - a.acc;
+    if (a.orders !== b.orders) return b.orders - a.orders;
+    if ((a.timeLeft || 0) !== (b.timeLeft || 0)) return (b.timeLeft || 0) - (a.timeLeft || 0);
+    return b.correct - a.correct;
   }
+  function isBetterRun(a, b) { return !b || cmpRun(a, b) < 0; }
 
   function recordRun(run) {
     if (!S.seat) return { saved: false, reason: 'no-seat' };
-    if (run.usedHelper) return { saved: false, reason: 'helper' };
     if (!run.attempts) return { saved: false, reason: 'no-answer' };   // ไม่ได้ตอบเลย ไม่นับ
     var all = loadScores();
     var rec = all[S.seat] || { plays: 0, best: null };
@@ -504,8 +504,8 @@
      4) GAME STATE
      ========================================================= */
   var TOTAL_PHASES = 3;
-  var ROUND_SECONDS = 480;          // 08:00
-  var BONUS_SECONDS = 20;           // โบนัสเวลาเมื่อส่งออเดอร์สำเร็จ
+  var ROUND_SECONDS = 480;          // 08:00 = เวลารวมทั้งเกม เดินยาวรวดเดียว ไม่รีเซ็ต ไม่มีโบนัสเวลา
+  var TARGET_ORDERS = 5;            // ส่งครบ 5 ออเดอร์ = จบเกม
 
   /* ใช้ตัวละครลูกค้าที่ตัดมาจาก ui-bg.png (assets/images/ui/customer.png)
      เปลี่ยนเฉพาะ "ออเดอร์" ในแต่ละรอบ */
@@ -642,7 +642,7 @@
   function renderScore(bump) {
     $('statStars').textContent = S.stars;
     $('statCoins').textContent = S.coins;
-    $('statOrders').textContent = S.orders;
+    $('statOrders').textContent = S.orders + '/' + TARGET_ORDERS;
     if (bump) {
       $$('.reward-chip').slice(0, 2).forEach(function (el) {
         el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
@@ -972,12 +972,15 @@
     S.orders++;
     S.stars += 50;
     S.coins += 5;
-    S.timeLeft = Math.min(ROUND_SECONDS, S.timeLeft + BONUS_SECONDS);
+    stopTimer();                     // พักเวลาไว้ระหว่างดูสรุปออเดอร์ ไม่ให้เสียเปรียบ
     renderScore(true);
     renderTimer();
     renderChain();
     cheerCustomer();
     Audio_.sfx('reward');
+
+    var isFinal = S.orders >= TARGET_ORDERS;
+    S.pendingFinish = isFinal;
 
     $('rewardPlant').src = 'assets/images/phase3.png';
     $('rewardCust').textContent = S.customer.name + ' พอใจมาก! ได้ “' + S.customer.want + '” ตามต้องการ';
@@ -985,8 +988,11 @@
     $('gainCoins').textContent = '+5';
     $('rewardTotalStars').textContent = S.stars;
     $('rewardTotalCoins').textContent = S.coins;
+    $('rewardTitle').textContent = isFinal
+      ? 'ครบ ' + TARGET_ORDERS + ' ออเดอร์แล้ว!'
+      : 'ส่งมอบผักสำเร็จ! (' + S.orders + '/' + TARGET_ORDERS + ')';
+    $('btnNextCustomer').textContent = isFinal ? 'ดูสรุปผล →' : 'รับลูกค้ารายต่อไป →';
     openModal('rewardModal');
-    toast('+' + BONUS_SECONDS + ' วินาที โบนัสส่งออเดอร์!', 'ok', 1800);
   }
 
   function newCustomer() {
@@ -1007,7 +1013,8 @@
     nextQuestion();
     renderSlots();
     renderProgress();
-    toast('ลูกค้าใหม่มาแล้ว! ' + S.customer.face + ' ' + S.customer.name, 'ok');
+    startTimer();                    // เดินเวลาต่อจากเดิม (ไม่รีเซ็ต)
+    toast('ลูกค้าใหม่มาแล้ว! ออเดอร์ที่ ' + (S.orders + 1) + '/' + TARGET_ORDERS, 'ok');
   }
 
   /* =========================================================
@@ -1035,9 +1042,13 @@
   /* =========================================================
      10) TIMER
      ========================================================= */
+  function fmtTime(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
   function renderTimer() {
-    var m = Math.floor(S.timeLeft / 60), s = S.timeLeft % 60;
-    $('timerValue').textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    $('timerValue').textContent = fmtTime(S.timeLeft);
     $('timerBox').classList.toggle('is-low', S.timeLeft <= 30);
   }
 
@@ -1052,14 +1063,18 @@
   }
   function stopTimer() { if (S.timerId) { clearInterval(S.timerId); S.timerId = null; } }
 
-  function gameOver() {
+  function gameOver(reason) {
     stopTimer();
     S.running = false;
-    S.started = false;          // หมดเวลาแล้ว ครั้งต่อไปต้องเริ่มใหม่
+    S.started = false;          // จบเกมแล้ว ครั้งต่อไปต้องเริ่มใหม่
+    var done = reason === 'complete';
+    $('overTitle').textContent = done
+      ? 'ส่งครบ ' + TARGET_ORDERS + ' ออเดอร์!'
+      : 'หมดเวลา!';
     var acc = S.attempts ? Math.round((S.correctAttempts / S.attempts) * 100) : 0;
-    $('sumOrders').textContent = S.orders;
+    $('sumOrders').textContent = S.orders + '/' + TARGET_ORDERS;
+    $('sumTime').textContent = fmtTime(done ? S.timeLeft : 0);
     $('sumStars').textContent = S.stars;
-    $('sumCoins').textContent = S.coins;
     $('sumAcc').textContent = acc + '%';
     var rank = acc >= 90 ? 'ระดับ : นักเคมีพอลิเมอร์ตัวจริง!'
              : acc >= 70 ? 'ระดับ : เกษตรกรพอลิเมอร์ฝีมือดี'
@@ -1072,13 +1087,12 @@
     var run = {
       score: score, stars: S.stars, acc: acc, orders: S.orders,
       correct: S.correctAttempts, attempts: S.attempts,
-      usedHelper: S.usedHelper, at: Date.now()
+      timeLeft: done ? S.timeLeft : 0, finished: done, at: Date.now()
     };
     var res = recordRun(run);
     $('sumScore').textContent = score;
     $('sumScoreNote').textContent =
       res.saved ? (res.isBest ? '(สถิติใหม่ของเลขที่ ' + S.seat + '!)' : '(ยังไม่ชนะสถิติเดิม)')
-                : res.reason === 'helper' ? '(ใช้ตัวช่วยลับ — ไม่บันทึกลงอันดับ)'
                 : res.reason === 'no-answer' ? '(ยังไม่ได้ตอบข้อไหนเลย — ไม่บันทึก)'
                 : '(ยังไม่ได้เลือกเลขที่)';
 
@@ -1179,17 +1193,11 @@
       var rec = all[i];
       if (rec && rec.best) rows.push({ seat: i, plays: rec.plays || 0, b: rec.best });
     }
-    rows.sort(function (x, y) {
-      var a = x.b, b = y.b;
-      if (a.score !== b.score) return b.score - a.score;
-      if (a.acc !== b.acc) return b.acc - a.acc;
-      if (a.orders !== b.orders) return b.orders - a.orders;
-      return b.correct - a.correct;
-    });
+    rows.sort(function (x, y) { return cmpRun(x.b, y.b); });
 
     var body = $('boardBody');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="board-empty">ยังไม่มีใครทำคะแนนไว้ — เล่นให้จบเกมแล้วคะแนนจะขึ้นที่นี่</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="board-empty">ยังไม่มีใครทำคะแนนไว้ — เล่นให้จบเกมแล้วคะแนนจะขึ้นที่นี่</td></tr>';
       return;
     }
     body.innerHTML = rows.map(function (r, i) {
@@ -1200,7 +1208,8 @@
         '<td class="bd-score">' + r.b.score + '</td>' +
         '<td>' + r.b.stars + '</td>' +
         '<td>' + r.b.acc + '%</td>' +
-        '<td>' + r.b.orders + '</td>' +
+        '<td>' + r.b.orders + '/' + TARGET_ORDERS + '</td>' +
+        '<td>' + (r.b.finished ? fmtTime(r.b.timeLeft || 0) : '—') + '</td>' +
         '<td>' + r.plays + '</td>' +
       '</tr>';
     }).join('');
@@ -1236,11 +1245,11 @@
     $('catalystHint').classList.remove('is-warn');
     $('catalystHint').textContent = 'เลือกบัวรดน้ำ “' + LOCK_META[S.catalyst].th + '” แล้ว — ต่อไปวางการ์ดคำตอบ';
 
+    // นับคะแนนตามปกติ — เก็บ flag ไว้แค่โชว์ในหน้าเฉลยของตัวเองเท่านั้น
     S.usedHelper = true;
     S.helpedThis = true;
     updateSubmitState();
-    Audio_.sfx('place');
-    toast('ตัวช่วยลับ: เติมคำตอบให้แล้ว (รอบนี้จะไม่ถูกบันทึกลงอันดับ)', '', 2200);
+    Audio_.sfx('place');          // ไม่ขึ้น toast จะได้ไม่มีใครสังเกต
   }
 
   /* =========================================================
@@ -1680,7 +1689,15 @@
     $('btnSubmit').addEventListener('click', submitAnswer);
     $('btnClear').addEventListener('click', clearAll);
     $('btnJsRetry').addEventListener('click', hideJumpscare);
-    $('btnNextCustomer').addEventListener('click', newCustomer);
+    $('btnNextCustomer').addEventListener('click', function () {
+      if (S.pendingFinish) {          // ออเดอร์สุดท้ายแล้ว -> ไปหน้าสรุปผล
+        S.pendingFinish = false;
+        closeModal('rewardModal');
+        gameOver('complete');
+        return;
+      }
+      newCustomer();
+    });
     $('btnRestart').addEventListener('click', function () { startGame(true); });
 
     // ปิด modal ด้วย Esc / คลิกพื้นหลัง

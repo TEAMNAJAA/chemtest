@@ -411,8 +411,8 @@
     <div class="summary-grid">
       <div class="sum"><b id="sumOrders">0</b><span>ออเดอร์สำเร็จ</span></div>
       <div class="sum"><b id="sumStars">0</b><span>ดาวสะสม</span></div>
-      <div class="sum"><b id="sumCoins">0</b><span>เหรียญใบไม้</span></div>
       <div class="sum"><b id="sumAcc">0%</b><span>ความแม่นยำ</span></div>
+      <div class="sum"><b id="sumTime">00:00</b><span>เวลาที่เหลือ</span></div>
     </div>
     <p class="reward-total" id="overRank">—</p>
     <p class="score-line">คะแนนรวม <b id="sumScore">0</b> <span id="sumScoreNote"></span></p>
@@ -442,16 +442,17 @@
           <span class="rule-note">ดาว: ตอบถูก 1 Phase = +20, ส่งออเดอร์ครบ 3 Phase = +50</span></li>
         <li>ถ้าคะแนนเท่ากัน → <b>ความแม่นยำ</b> สูงกว่าอยู่บนกว่า</li>
         <li>ถ้ายังเท่ากัน → <b>จำนวนออเดอร์สำเร็จ</b> มากกว่า</li>
-        <li>ถ้ายังเท่ากันอีก → <b>ตอบถูกจำนวนครั้ง</b> มากกว่า</li>
+        <li>ถ้ายังเท่ากันอีก → <b>เวลาที่เหลือ</b> มากกว่า (ทำครบ 5 ออเดอร์ได้เร็วกว่า)</li>
+        <li>สุดท้าย → <b>ตอบถูกจำนวนครั้ง</b> มากกว่า</li>
       </ol>
-      <p class="rule-warn">รอบที่กด “ตัวช่วยลับ” จะไม่ถูกบันทึกลงอันดับ</p>
+      <p class="rule-warn">เวลา 08:00 คือเวลารวมทั้งเกม เดินยาวรวดเดียว — ส่งครบ 5 ออเดอร์ หรือหมดเวลา = จบเกม</p>
     </div>
 
     <div class="guide-body board-body">
       <div class="table-scroll">
         <table class="guide-table board-table">
           <thead>
-            <tr><th>อันดับ</th><th>เลขที่</th><th>คะแนน</th><th>ดาว</th><th>แม่นยำ</th><th>ออเดอร์</th><th>เล่นไป</th></tr>
+            <tr><th>อันดับ</th><th>เลขที่</th><th>คะแนน</th><th>ดาว</th><th>แม่นยำ</th><th>ออเดอร์</th><th>เวลาเหลือ</th><th>เล่นไป</th></tr>
           </thead>
           <tbody id="boardBody"></tbody>
         </table>
